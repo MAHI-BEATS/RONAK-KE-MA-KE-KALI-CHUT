@@ -11,72 +11,206 @@ from PritiMusic.utils.database import (
     remove_active_video_chat,
 )
 
+POWERED_BY = "🤞 **𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOTS.🙂❤️**"
 
-@app.on_message(filters.command(["activevc", "activevoice","vc"]) & SUDOERS)
-async def activevc(_, message: Message):
-    mystic = await message.reply_text("» ɢᴇᴛᴛɪɴɢ ᴀᴄᴛɪᴠᴇ ᴠᴏɪᴄᴇ ᴄʜᴀᴛs ʟɪsᴛ...")
-    served_chats = await get_active_chats()
+async def generate_invite_link(chat_id: int) -> str:
+    """Safely generate chat invite link"""
+    try:
+        invite_link = await app.export_chat_invite_link(chat_id)
+        return invite_link
+    except (ChatAdminRequired, UserNotParticipant, ChatForbidden):
+        chat_str = str(chat_id)
+        if chat_str.startswith("-100"):
+            return f"https://t.me/c/{chat_str[4:]}/1"
+        return f"https://t.me/c/{chat_str[1:]}/1"
+    except Exception:
+        return "❌ Invite Link Unavailable"
+
+def ordinal_number(n: int) -> str:
+    """Convert integer to ordinal (1st, 2nd, 3rd)"""
+    if 10 <= (n % 100) <= 19:
+        return f"{n}th"
+    elif n % 10 == 1:
+        return f"{n}st"
+    elif n % 10 == 2:
+        return f"{n}nd"
+    elif n % 10 == 3:
+        return f"{n}rd"
+    return f"{n}th"
+
+@app.on_message(filters.command(["activevc", "vc", "activevoice"]) & SUDOERS)
+async def active_voice_chats(_, message: Message):
+    """🎤 Active voice chats list"""
+    mystic = await message.reply_text("🔄 **Fetching active voice chats...**")
+    
+    try:
+        served_chats = await get_active_chats()
+    except Exception as e:
+        await mystic.edit_text(f"❌ **Error:** `{str(e)}`")
+        return
+    
+    if not served_chats:
+        await mystic.edit_text(f"📭 **No active voice chats.**\n\n{POWERED_BY}")
+        return
+    
     text = ""
+    buttons = []
     j = 0
-    for x in served_chats:
+    
+    for chat_id in served_chats:
         try:
-            title = (await app.get_chat(x)).title
-        except:
-            await remove_active_chat(x)
-            continue
-        try:
-            if (await app.get_chat(x)).username:
-                user = (await app.get_chat(x)).username
-                text += f"<b>{j + 1}.</b> <a href=https://t.me/{user}>{unidecode(title).upper()}</a>\n"
+            chat_info = await app.get_chat(chat_id)
+            title = chat_info.title or "Unknown Chat"
+            invite_link = await generate_invite_link(chat_id)
+            
+            clean_title = unidecode(title)[:30]
+            if len(title) > 30:
+                clean_title += "..."
+            
+            if chat_info.username:
+                text += f"**{j + 1}.** [{clean_title}](https://t.me/{chat_info.username}) `[{chat_id}]`\n"
             else:
-                text += (
-                    f"<b>{j + 1}.</b> {unidecode(title).upper()}\n"
+                text += f"**{j + 1}.** {clean_title} `[{chat_id}]`\n"
+            
+            buttons.append([
+                InlineKeyboardButton(
+                    f"🎵 Join {ordinal_number(j + 1)}", 
+                    url=invite_link
                 )
+            ])
             j += 1
-        except:
+            
+        except Exception:
+            try:
+                await remove_active_chat(chat_id)
+            except:
+                pass
             continue
+    
     if not text:
-        await mystic.edit_text(f"» ɴᴏ ᴀᴄᴛɪᴠᴇ ᴠᴏɪᴄᴇ ᴄʜᴀᴛs ᴏɴ {app.mention}.")
-    else:
-        await mystic.edit_text(
-            f"<b>» ʟɪsᴛ ᴏғ ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ ᴠᴏɪᴄᴇ ᴄʜᴀᴛs :</b>\n\n{text}",
-            disable_web_page_preview=True,
-        )
+        await mystic.edit_text(f"📭 **No valid voice chats found.**\n\n{POWERED_BY}")
+        return
+    
+    await mystic.edit_text(
+        f"**🎤 Active Voice Chats ({j}):**\n\n{text}\n\n{POWERED_BY}",
+        reply_markup=InlineKeyboardMarkup(buttons),
+        disable_web_page_preview=True
+    )
 
-
-@app.on_message(filters.command(["activev", "activevideo","vvc"]) & SUDOERS)
-async def activevi_(_, message: Message):
-    mystic = await message.reply_text("» ɢᴇᴛᴛɪɴɢ ᴀᴄᴛɪᴠᴇ ᴠɪᴅᴇᴏ ᴄʜᴀᴛs ʟɪsᴛ...")
-    served_chats = await get_active_video_chats()
+@app.on_message(filters.command(["activevideo", "av", "activev"]) & SUDOERS)
+async def active_video_chats(_, message: Message):
+    """📹 Active video chats list"""
+    mystic = await message.reply_text("🔄 **Fetching active video chats...**")
+    
+    try:
+        served_chats = await get_active_video_chats()
+    except Exception as e:
+        await mystic.edit_text(f"❌ **Error:** `{str(e)}`")
+        return
+    
+    if not served_chats:
+        await mystic.edit_text(f"📭 **No active video chats.**\n\n{POWERED_BY}")
+        return
+    
     text = ""
+    buttons = []
     j = 0
-    for x in served_chats:
+    
+    for chat_id in served_chats:
         try:
-            title = (await app.get_chat(x)).title
-        except:
-            await remove_active_video_chat(x)
-            continue
-        try:
-            if (await app.get_chat(x)).username:
-                user = (await app.get_chat(x)).username
-                text += f"<b>{j + 1}.</b> <a href=https://t.me/{user}>{unidecode(title).upper()}</a> [<code>{x}</code>]\n"
+            chat_info = await app.get_chat(chat_id)
+            title = chat_info.title or "Unknown Chat"
+            invite_link = await generate_invite_link(chat_id)
+            
+            clean_title = unidecode(title)[:30]
+            if len(title) > 30:
+                clean_title += "..."
+            
+            if chat_info.username:
+                text += f"**{j + 1}.** [{clean_title}](https://t.me/{chat_info.username}) `[{chat_id}]`\n"
             else:
-                text += (
-                    f"<b>{j + 1}.</b> {unidecode(title).upper()} [<code>{x}</code>]\n"
+                text += f"**{j + 1}.** {clean_title} `[{chat_id}]`\n"
+            
+            buttons.append([
+                InlineKeyboardButton(
+                    f"🎥 Join {ordinal_number(j + 1)}", 
+                    url=invite_link
                 )
+            ])
             j += 1
-        except:
+            
+        except Exception:
+            try:
+                await remove_active_video_chat(chat_id)
+            except:
+                pass
             continue
+    
     if not text:
-        await mystic.edit_text(f"» ɴᴏ ᴀᴄᴛɪᴠᴇ ᴠɪᴅᴇᴏ ᴄʜᴀᴛs ᴏɴ {app.mention}.")
-    else:
-        await mystic.edit_text(
-            f"<b>» ʟɪsᴛ ᴏғ ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ ᴠɪᴅᴇᴏ ᴄʜᴀᴛs :</b>\n\n{text}",
-            disable_web_page_preview=True,
-        )
+        await mystic.edit_text(f"📭 **No valid video chats found.**\n\n{POWERED_BY}")
+        return
+    
+    await mystic.edit_text(
+        f"**📹 Active Video Chats ({j}):**\n\n{text}\n\n{POWERED_BY}",
+        reply_markup=InlineKeyboardMarkup(buttons),
+        disable_web_page_preview=True
+    )
 
-@app.on_message(filters.command(["ac","av"]) & SUDOERS)
-async def start(client: Client, message: Message):
-    ac_audio = str(len(await get_active_chats()))
-    ac_video = str(len(await get_active_video_chats()))
-    await message.reply_text(f"✫ <b><u>ᴀᴄᴛɪᴠᴇ ᴄʜᴀᴛs ɪɴғᴏ</u></b> :\n\nᴠᴏɪᴄᴇ : {ac_audio}\nᴠɪᴅᴇᴏ  : {ac_video}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('✯ ᴄʟᴏsᴇ ✯', callback_data=f"close")]]))
+@app.on_message(filters.command(["astats"]) & SUDOERS)
+async def astats(_, message: Message):
+    """📊 Active stats with inline buttons"""
+    try:
+        voice_count = len(await get_active_chats())
+        video_count = len(await get_active_video_chats())
+        total = voice_count + video_count
+        
+        stats_text = (
+            f"📊 **Active Chats Stats**\n\n"
+            f"🎤 **Voice Chats:** `{voice_count}`\n"
+            f"📹 **Video Chats:** `{video_count}`\n"
+            f"📈 **Total:** `{total}`\n\n"
+            f"{POWERED_BY}"
+        )
+        
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("🎤 Voice Chats", callback_data="activevc_cb"),
+                InlineKeyboardButton("📹 Video Chats", callback_data="activev_cb")
+            ],
+            [
+                InlineKeyboardButton("🔄 Refresh", callback_data="astats_cb"),
+                InlineKeyboardButton("❌ Close", callback_data="close")
+            ]
+        ])
+        
+        await message.reply_text(
+            stats_text,
+            reply_markup=keyboard,
+            disable_web_page_preview=True
+        )
+        
+    except Exception as e:
+        await message.reply_text(f"❌ **Error:** `{str(e)}`\n\n{POWERED_BY}")
+
+@app.on_callback_query(filters.regex("activevc_cb") & SUDOERS)
+async def cb_activevc(client, callback_query: CallbackQuery):
+    """Voice chats callback"""
+    await callback_query.message.edit_text("🔄 **Loading voice chats...**")
+    await active_voice_chats(client, callback_query.message)
+
+@app.on_callback_query(filters.regex("activev_cb") & SUDOERS)
+async def cb_activev(client, callback_query: CallbackQuery):
+    """Video chats callback"""
+    await callback_query.message.edit_text("🔄 **Loading video chats...**")
+    await active_video_chats(client, callback_query.message)
+
+@app.on_callback_query(filters.regex("astats_cb") & SUDOERS)
+async def cb_astats(client, callback_query: CallbackQuery):
+    """Refresh stats callback"""
+    await callback_query.message.edit_text("🔄 **Refreshing stats...**")
+    await astats(client, callback_query.message)
+
+@app.on_callback_query(filters.regex("close") & SUDOERS)
+async def cb_close(_, callback_query: CallbackQuery):
+    """Close callback"""
+    await callback_query.message.delete()
