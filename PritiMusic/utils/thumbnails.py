@@ -8,17 +8,21 @@ from unidecode import unidecode
 from py_yt import VideosSearch
 
 from PritiMusic import app
-from config import YOUTUBE_IMG_URL
+import config
 
 def changeImageSize(maxWidth, maxHeight, image):
     widthRatio = maxWidth / image.size[0]
     heightRatio = maxHeight / image.size[1]
     newWidth = int(widthRatio * image.size[0])
     newHeight = int(heightRatio * image.size[1])
-    newImage = image.resize((newWidth, newHeight))
-    return newImage
+    return image.resize((newWidth, newHeight))
 
 def clear(text):
+    # Emojis aur weird characters ko clean karne ke liye unidecode use kiya
+    try:
+        text = unidecode(text)
+    except Exception:
+        pass
     list_words = text.split(" ")
     title = ""
     for i in list_words:
@@ -26,13 +30,13 @@ def clear(text):
             title += " " + i
     return title.strip()
 
-# ✅ Helper for Random Fallback
+# ✅ Safe Random Fallback Image Link String return karega
 def get_random_fallback_img():
-    if YOUTUBE_IMG_URL:
-        if isinstance(YOUTUBE_IMG_URL, list):
-            return random.choice(YOUTUBE_IMG_URL)
-        return YOUTUBE_IMG_URL
-    return "https://telegra.ph/file/2e3d368e77c449c287430.jpg" # Fallback
+    if hasattr(config, "YOUTUBE_IMG_URL") and config.YOUTUBE_IMG_URL:
+        if isinstance(config.YOUTUBE_IMG_URL, list):
+            return random.choice(config.YOUTUBE_IMG_URL)
+        return config.YOUTUBE_IMG_URL
+    return "https://files.catbox.moe/n22tbs.jpg"
 
 async def get_thumb(videoid):
     if os.path.isfile(f"cache/{videoid}.png"):
@@ -41,119 +45,123 @@ async def get_thumb(videoid):
     url = f"https://www.youtube.com/watch?v={videoid}"
     try:
         results = VideosSearch(url, limit=1)
-        for result in (await results.next())["result"]:
+        next_result = await results.next()
+        if not next_result or "result" not in next_result or not next_result["result"]:
+            return get_random_fallback_img()
+
+        for result in next_result["result"]:
             try:
                 title = result["title"]
-                title = re.sub("\W+", " ", title)
+                title = re.sub(r"\W+", " ", title)
                 title = title.title()
-            except:
+            except Exception:
                 title = "Unsupported Title"
             try:
                 duration = result["duration"]
-            except:
+            except Exception:
                 duration = "Unknown Mins"
+            
             thumbnail = result["thumbnails"][0]["url"].split("?")[0]
+            
             try:
                 views = result["viewCount"]["short"]
-            except:
+            except Exception:
                 views = "Unknown Views"
             try:
                 channel = result["channel"]["name"]
-            except:
+            except Exception:
                 channel = "Unknown Channel"
+
+        # Create cache folder if it doesn't exist
+        if not os.path.exists("cache"):
+            os.makedirs("cache")
 
         async with aiohttp.ClientSession() as session:
             async with session.get(thumbnail) as resp:
                 if resp.status == 200:
                     async with aiofiles.open(f"cache/thumb{videoid}.png", mode="wb") as f:
                         await f.write(await resp.read())
+                else:
+                    return get_random_fallback_img()
 
         youtube = Image.open(f"cache/thumb{videoid}.png")
         image1 = changeImageSize(1280, 720, youtube)
         
-        # Convert to RGBA for transparency support
+        # Convert to RGBA for blending layers
         background = image1.convert("RGBA")
-        
-        # 1. Background Blur
         background = background.filter(filter=ImageFilter.BoxBlur(10))
         enhancer = ImageEnhance.Brightness(background)
         background = enhancer.enhance(0.5)
         
-        # 2. Add Black Attractive Card Overlay
         overlay = Image.new("RGBA", background.size, (0, 0, 0, 0))
         draw_overlay = ImageDraw.Draw(overlay)
         
-        # Card Box Coordinates (Left, Top, Right, Bottom)
         card_box = [60, 400, 1220, 650]
         
         try:
-            # Rounded rectangle for modern look (Pillow 8.2.0+)
             draw_overlay.rounded_rectangle(
                 card_box, 
                 radius=25, 
-                fill=(10, 10, 10, 210),   # Semi-transparent black
-                outline=(255, 255, 255, 80), # Subtle white border
+                fill=(10, 10, 10, 210),   
+                outline=(255, 255, 255, 80), 
                 width=3
             )
         except AttributeError:
-            # Fallback for older PIL versions
             draw_overlay.rectangle(card_box, fill=(10, 10, 10, 210), outline=(255, 255, 255, 80), width=3)
             
         background = Image.alpha_composite(background, overlay)
         draw = ImageDraw.Draw(background)
         
-        # 3. Fonts Loading
+        # Safe font loader paths
+        font_paths = ["PritiMusic/assets/font2.ttf", "PritiMusic/assets/font.ttf"]
         try:
-            arial = ImageFont.truetype("PritiMusic/assets/font2.ttf", 30)
-            font = ImageFont.truetype("PritiMusic/assets/font.ttf", 35) 
-            stylish_font = ImageFont.truetype("PritiMusic/assets/font.ttf", 40)
-        except:
+            arial = ImageFont.truetype(font_paths[0], 30)
+            font = ImageFont.truetype(font_paths[1], 35) 
+            stylish_font = ImageFont.truetype(font_paths[1], 40)
+        except Exception:
             arial = ImageFont.load_default()
             font = ImageFont.load_default()
             stylish_font = ImageFont.load_default()
             
-        # 4. Elements INSIDE the Card
-        # Channel & Views
-        draw.text((90, 430), f"{channel} | {views[:23]}", (200, 200, 200), font=arial)
-        
-        # Title
+        # Draw text insides
+        draw.text((90, 430), f"{channel} | {views}", (200, 200, 200), font=arial)
         draw.text((90, 480), clear(title), (255, 255, 255), font=font)
         
-        # Progress Bar (Background Line - Inactive)
-        draw.line([(90, 570), (1190, 570)], fill=(255, 255, 255, 90), width=6, joint="curve")
-        
-        # Progress Bar (Active Line)
-        draw.line([(90, 570), (380, 570)], fill="white", width=6, joint="curve")
-        
-        # Progress Dot
+        # Progress bars
+        draw.line([(90, 570), (1190, 570)], fill=(255, 255, 255, 90), width=6)
+        draw.line([(90, 570), (380, 570)], fill="white", width=6)
         draw.ellipse([(370, 558), (394, 582)], outline="white", fill="white", width=4)
         
-        # Duration & Timer
         draw.text((90, 595), "00:00", (255, 255, 255), font=arial)
-        draw.text((1080, 595), f"{duration[:23]}", (255, 255, 255), font=arial)
+        draw.text((1080, 595), f"{duration}", (255, 255, 255), font=arial)
         
-        # 5. Elements OUTSIDE (Bottom Left & Right)
-        # Left Bottom Text
-        draw.text((60, 670), "BETA BOT HUB", (255, 215, 0), font=stylish_font) # Gold/Yellow color
+        # Footer Branding
+        draw.text((60, 670), "BETA BOT HUB", (255, 215, 0), font=stylish_font)
         
-        # Right Bottom Text (Bot Name)
-        bot_name = "PritiMusic"
+        bot_name = "PRITI MUSIC"
         if hasattr(app, "name") and app.name:
-            bot_name = app.name
+            bot_name = str(app.name).upper()
         
-        # Calculate width to align right (approximate approach for PIL without getbbox)
-        # Assuming ~20 pixels per character for size 40 font
-        right_x = 1220 - (len(bot_name) * 20) 
+        # Dynamic Text Alignment for Bot Name to avoid layout overlapping
+        try:
+            if hasattr(stylish_font, "getbbox"):
+                text_w = stylish_font.getbbox(bot_name)[2]
+            else:
+                text_w = draw.textsize(bot_name, font=stylish_font)[0]
+            right_x = 1220 - text_w
+        except Exception:
+            right_x = 1220 - (len(bot_name) * 20)
+
         draw.text((right_x, 670), bot_name, (255, 215, 0), font=stylish_font)
 
         try:
             os.remove(f"cache/thumb{videoid}.png")
-        except:
+        except Exception:
             pass
             
         background.save(f"cache/{videoid}.png")
         return f"cache/{videoid}.png"
         
     except Exception as e:
-        print(e)
+        print(f"Thumbnail Error: {e}")
         return get_random_fallback_img()
