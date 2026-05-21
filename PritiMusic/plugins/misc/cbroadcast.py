@@ -3,6 +3,7 @@ from pyrogram import filters, Client
 from pyrogram.enums import ChatType
 from pyrogram.errors import FloodWait, RPCError, PeerIdInvalid, UserIsBlocked, InputUserDeactivated, AuthKeyUnregistered
 
+
 from PritiMusic import app
 from PritiMusic.misc import SUDOERS
 from PritiMusic.utils.database.clonedb import (
@@ -60,6 +61,10 @@ async def clone_broadcast_handler(client, message):
 
     if not query and not message.reply_to_message:
         return await message.reply_text("❌ **Message is empty!**")
+
+    # Add branding signature to plain text broadcast queries
+    if not message.reply_to_message and query:
+        query += "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️"
 
     IS_CBROADCASTING = True
     status_msg = await message.reply_text("🔄 **Analyzing Clones...**")
@@ -188,5 +193,6 @@ async def clone_broadcast_handler(client, message):
         f"🤖 **Total Clones:** {total_clones}\n"
         f"📢 **Active Sending:** {success_clones}\n"
         f"⚠️ **Failed/Revoked:** {failed_clones}\n"
-        f"📨 **Messages Sent:** {total_sent}"
+        f"📨 **Messages Sent:** {total_sent}\n\n"
+        f"🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️"
     )
