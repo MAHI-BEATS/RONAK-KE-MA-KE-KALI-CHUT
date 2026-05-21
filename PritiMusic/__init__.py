@@ -8,7 +8,7 @@ from SafoneAPI import SafoneAPI
 from .logging import LOGGER
 
 dirr()
-git()
+# git() # बोट को 'fatal: could not read Username' एरर और क्रैश से बचाने के लिए इसे बंद कर दिया है।
 dbb()
 heroku()
 
