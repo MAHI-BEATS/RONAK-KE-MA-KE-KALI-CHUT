@@ -55,6 +55,10 @@ async def broadcast_message(client, message: Message, _):
     if not message.reply_to_message and not query_to_send:
         return await message.reply_text(_["broad_8"])
 
+    # Append branding text if it is a text broadcast
+    if query_to_send:
+        query_to_send += "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️"
+
     # Start Broadcast
     IS_BROADCASTING = True
     status_msg = await message.reply_text(_["broad_1"])
@@ -100,7 +104,7 @@ async def broadcast_message(client, message: Message, _):
                 except Exception:
                     continue
             
-            await message.reply_text(_["broad_3"].format(sent, pin_count))
+            await message.reply_text(_["broad_3"].format(sent, pin_count) + "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️")
 
         # --- PART B: BROADCAST TO USERS ---
         if "-user" in message.text:
@@ -130,7 +134,7 @@ async def broadcast_message(client, message: Message, _):
                 except Exception:
                     pass
             
-            await message.reply_text(_["broad_4"].format(susr))
+            await message.reply_text(_["broad_4"].format(susr) + "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️")
 
     finally:
         # Ensure the lock is released even if errors occur
