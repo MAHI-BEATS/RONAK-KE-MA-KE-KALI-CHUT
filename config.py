@@ -34,12 +34,15 @@ OWNER_ID = int(getenv("OWNER_ID", "0"))
 HEROKU_APP_NAME = getenv("HEROKU_APP_NAME")
 HEROKU_API_KEY = getenv("HEROKU_API_KEY")
 
+# यहाँ पूरा URL देना ज़रूरी है ताकि git.py इसे सही से split कर सके
 UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
-    "MAHI-BEATS/RONAK-KE-MA-KE-KALI-CHUT",
+    "https://github.com/MAHI-BEATS/RONAK-KE-MA-KE-KALI-CHUT",
 )
 UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main")
-GIT_TOKEN = getenv("GIT_TOKEN", "")
+
+# डिफ़ॉल्ट वैल्यू "none" की है ताकि Heroku क्रेडेंशियल एरर (exit code 128) न दे
+GIT_TOKEN = getenv("GIT_TOKEN", "none")
 
 # --- EXTERNAL LINKS ---
 SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/betabot_hub")
