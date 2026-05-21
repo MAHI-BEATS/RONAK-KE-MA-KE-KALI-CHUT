@@ -1,5 +1,8 @@
 from pyrogram import filters, Client
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+# FIX: Added CallbackQuery here
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+# FIX: Added required exceptions to prevent crash inside generate_invite_link
+from pyrogram.errors import ChatAdminRequired, UserNotParticipant, ChatForbidden
 from unidecode import unidecode
 
 from PritiMusic import app
