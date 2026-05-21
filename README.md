@@ -135,7 +135,7 @@ bash start
 ---
 
 <p align="center">
-<a href="https://t.me/The_LuckyX"> <img src="https://img.shields.io/badge/𝐋𝚄𝙲𝙺𝚈 𝐑𝙰𝙹𝙰-darkred?style=for-the-badge&logo=telegram" alt="PritiMusic" /> </a>
+<a href="https://t.me/SUKOON_S"> <img src="https://img.shields.io/badge/THE SHIV-darkred?style=for-the-badge&logo=telegram" alt="PritiMusic" /> </a>
 </p>
 
 ---
@@ -183,6 +183,12 @@ bash start
     ```bash
     sudo apt install tmux -y && tmux
     ```
+
+    <h3 align="center">
+    ─「 ᴅᴇᴩʟᴏʏ ᴏɴ ʜᴇʀᴏᴋᴜ 」─
+</h3>
+
+<p align="center"><a href="https://dashboard.heroku.com/new?template=https://github.com/RONAK-KE-MA-KE-KALI-CHUT"> <img src="https://img.shields.io/badge/Deploy%20On%20Heroku-purple?style=for-the-badge&logo=heroku" width="220" height="38.45"/></a></p>
 10. **Run the Bot**
     ```bash
     bash start
