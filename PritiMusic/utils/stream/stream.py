@@ -13,15 +13,15 @@ from PritiMusic.utils.exceptions import AssistantErr
 from PritiMusic.utils.inline import aq_markup, close_markup, stream_markup
 from PritiMusic.utils.stream.queue import put_queue, put_queue_index
 from PritiMusic.utils.pastebin import LuckyBin
-from PritiMusic.utils.thumbnails import get_thumb
+from PritiMusic.utils.thumbnails import get_thumb  # Aapka naya dynamic thumbnail core
 
-# ✅ Helper to get Random Image safely
+# ✅ Helper to get Random Image safely if list contains multiple links
 def get_random_img(img_list):
     if img_list:
         if isinstance(img_list, list):
             return random.choice(img_list)
         return img_list
-    return "https://telegra.ph/file/2e3d368e77c449c287430.jpg" # Fallback
+    return "https://files.catbox.moe/n22tbs.jpg" # Absolute fallback
 
 async def stream(
     _,
@@ -39,7 +39,10 @@ async def stream(
     if not result:
         return
     if forceplay:
-        await Lucky.force_stop_stream(chat_id)
+        try:
+            await Lucky.force_stop_stream(chat_id)
+        except Exception:
+            pass
 
     if streamtype == "playlist":
         msg = f"{_['play_19']}\n\n"
@@ -55,7 +58,7 @@ async def stream(
                     thumbnail,
                     vidid,
                 ) = await YouTube.details(search, False if spotify else True)
-            except:
+            except Exception:
                 continue
             if str(duration_min) == "None":
                 continue
@@ -73,7 +76,10 @@ async def stream(
                     user_id,
                     "video" if video else "audio",
                 )
-                position = len(db.get(chat_id)) - 1
+                try:
+                    position = len(db.get(chat_id)) - 1
+                except Exception:
+                    position = 1
                 count += 1
                 msg += f"{count}. {title[:70]}\n"
                 msg += f"{_['play_20']} {position}\n\n"
@@ -85,7 +91,7 @@ async def stream(
                     file_path, direct = await YouTube.download(
                         vidid, mystic, video=status, videoid=True
                     )
-                except:
+                except Exception:
                     raise AssistantErr(_["play_14"])
                 await Lucky.join_call(
                     chat_id,
@@ -106,8 +112,11 @@ async def stream(
                     "video" if video else "audio",
                     forceplay=forceplay,
                 )
+                
+                # ✨ Fix: await your new get_thumb card generation
                 img = await get_thumb(vidid)
-                if not img: img = get_random_img(config.PLAYLIST_IMG_URL) # Fallback
+                if not img: 
+                    img = get_random_img(config.PLAYLIST_IMG_URL)
 
                 button = stream_markup(_, chat_id)
                 run = await app.send_photo(
@@ -120,10 +129,11 @@ async def stream(
                         user_name,
                     ),
                     reply_markup=InlineKeyboardMarkup(button),
-                    has_spoiler=True # ✨ Spoiler
+                    has_spoiler=True
                 )
-                db[chat_id][0]["mystic"] = run
-                db[chat_id][0]["markup"] = "stream"
+                if chat_id in db and db[chat_id]:
+                    db[chat_id][0]["mystic"] = run
+                    db[chat_id][0]["markup"] = "stream"
         if count == 0:
             return
         else:
@@ -135,12 +145,16 @@ async def stream(
                 car = msg
             carbon = await Carbon.generate(car, random.randint(100, 10000000))
             upl = close_markup(_)
+            try:
+                position = len(db.get(chat_id)) - 1
+            except Exception:
+                position = 1
             return await app.send_photo(
                 original_chat_id,
                 photo=carbon,
                 caption=_["play_21"].format(position, link),
                 reply_markup=upl,
-                has_spoiler=True # ✨ Spoiler
+                has_spoiler=True
             )
 
     elif streamtype == "youtube":
@@ -154,7 +168,7 @@ async def stream(
             file_path, direct = await YouTube.download(
                 vidid, mystic, videoid=True, video=status
             )
-        except:
+        except Exception:
             raise AssistantErr(_["play_14"])
         
         if await is_active_chat(chat_id):
@@ -169,7 +183,10 @@ async def stream(
                 user_id,
                 "video" if video else "audio",
             )
-            position = len(db.get(chat_id)) - 1
+            try:
+                position = len(db.get(chat_id)) - 1
+            except Exception:
+                position = 1
             button = aq_markup(_, chat_id)
             await app.send_message(
                 chat_id=original_chat_id,
@@ -198,8 +215,11 @@ async def stream(
                 "video" if video else "audio",
                 forceplay=forceplay,
             )
+            
+            # ✨ Fix: await your new get_thumb card generation
             img = await get_thumb(vidid)
-            if not img: img = get_random_img(config.PLAYLIST_IMG_URL) # Fallback
+            if not img: 
+                img = get_random_img(config.YOUTUBE_IMG_URL)
 
             button = stream_markup(_, chat_id)
             run = await app.send_photo(
@@ -212,10 +232,11 @@ async def stream(
                     user_name,
                 ),
                 reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True # ✨ Spoiler
+                has_spoiler=True
             )
-            db[chat_id][0]["mystic"] = run
-            db[chat_id][0]["markup"] = "stream"
+            if chat_id in db and db[chat_id]:
+                db[chat_id][0]["mystic"] = run
+                db[chat_id][0]["markup"] = "stream"
 
     elif streamtype == "soundcloud":
         file_path = result["filepath"]
@@ -233,7 +254,10 @@ async def stream(
                 user_id,
                 "audio",
             )
-            position = len(db.get(chat_id)) - 1
+            try:
+                position = len(db.get(chat_id)) - 1
+            except Exception:
+                position = 1
             button = aq_markup(_, chat_id)
             await app.send_message(
                 chat_id=original_chat_id,
@@ -264,10 +288,11 @@ async def stream(
                     config.SUPPORT_CHAT, title[:23], duration_min, user_name
                 ),
                 reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True # ✨ Spoiler
+                has_spoiler=True
             )
-            db[chat_id][0]["mystic"] = run
-            db[chat_id][0]["markup"] = "tg"
+            if chat_id in db and db[chat_id]:
+                db[chat_id][0]["mystic"] = run
+                db[chat_id][0]["markup"] = "tg"
 
     elif streamtype == "telegram":
         file_path = result["path"]
@@ -287,7 +312,10 @@ async def stream(
                 user_id,
                 "video" if video else "audio",
             )
-            position = len(db.get(chat_id)) - 1
+            try:
+                position = len(db.get(chat_id)) - 1
+            except Exception:
+                position = 1
             button = aq_markup(_, chat_id)
             await app.send_message(
                 chat_id=original_chat_id,
@@ -314,7 +342,6 @@ async def stream(
                 await add_active_video_chat(chat_id)
             button = stream_markup(_, chat_id)
             
-            # ✅ Random Telegram Image Logic
             tg_img = get_random_img(config.TELEGRAM_VIDEO_URL) if video else get_random_img(config.TELEGRAM_AUDIO_URL)
             
             run = await app.send_photo(
@@ -322,10 +349,11 @@ async def stream(
                 photo=tg_img,
                 caption=_["stream_1"].format(link, title[:23], duration_min, user_name),
                 reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True # ✨ Spoiler
+                has_spoiler=True
             )
-            db[chat_id][0]["mystic"] = run
-            db[chat_id][0]["markup"] = "tg"
+            if chat_id in db and db[chat_id]:
+                db[chat_id][0]["mystic"] = run
+                db[chat_id][0]["markup"] = "tg"
 
     elif streamtype == "live":
         link = result["link"]
@@ -346,7 +374,10 @@ async def stream(
                 user_id,
                 "video" if video else "audio",
             )
-            position = len(db.get(chat_id)) - 1
+            try:
+                position = len(db.get(chat_id)) - 1
+            except Exception:
+                position = 1
             button = aq_markup(_, chat_id)
             await app.send_message(
                 chat_id=original_chat_id,
@@ -378,8 +409,11 @@ async def stream(
                 "video" if video else "audio",
                 forceplay=forceplay,
             )
+            
+            # ✨ Fix: await your new get_thumb card generation
             img = await get_thumb(vidid)
-            if not img: img = get_random_img(config.PLAYLIST_IMG_URL) # Fallback
+            if not img: 
+                img = get_random_img(config.YOUTUBE_IMG_URL)
 
             button = stream_markup(_, chat_id)
             run = await app.send_photo(
@@ -392,10 +426,11 @@ async def stream(
                     user_name,
                 ),
                 reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True # ✨ Spoiler
+                has_spoiler=True
             )
-            db[chat_id][0]["mystic"] = run
-            db[chat_id][0]["markup"] = "tg"
+            if chat_id in db and db[chat_id]:
+                db[chat_id][0]["mystic"] = run
+                db[chat_id][0]["markup"] = "tg"
 
     elif streamtype == "index":
         link = result
@@ -412,7 +447,10 @@ async def stream(
                 link,
                 "video" if video else "audio",
             )
-            position = len(db.get(chat_id)) - 1
+            try:
+                position = len(db.get(chat_id)) - 1
+            except Exception:
+                position = 1
             button = aq_markup(_, chat_id)
             await mystic.edit_text(
                 text=_["queue_4"].format(position, title[:27], duration_min, user_name),
@@ -440,14 +478,17 @@ async def stream(
             )
             button = stream_markup(_, chat_id)
             
-            # ✅ Random Stream Image
             run = await app.send_photo(
                 original_chat_id,
                 photo=get_random_img(config.STREAM_IMG_URL),
                 caption=_["stream_2"].format(user_name),
                 reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True # ✨ Spoiler
+                has_spoiler=True
             )
-            db[chat_id][0]["mystic"] = run
-            db[chat_id][0]["markup"] = "tg"
-            await mystic.delete()
+            if chat_id in db and db[chat_id]:
+                db[chat_id][0]["mystic"] = run
+                db[chat_id][0]["markup"] = "tg"
+            try:
+                await mystic.delete()
+            except Exception:
+                pass
