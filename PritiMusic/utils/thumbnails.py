@@ -19,9 +19,9 @@ def changeImageSize(maxWidth, maxHeight, image):
     return newImage
 
 def clear(text):
-    list = text.split(" ")
+    list_words = text.split(" ")
     title = ""
-    for i in list:
+    for i in list_words:
         if len(title) + len(i) < 60:
             title += " " + i
     return title.strip()
@@ -65,83 +65,95 @@ async def get_thumb(videoid):
         async with aiohttp.ClientSession() as session:
             async with session.get(thumbnail) as resp:
                 if resp.status == 200:
-                    f = await aiofiles.open(f"cache/thumb{videoid}.png", mode="wb")
-                    await f.write(await resp.read())
-                    await f.close()
+                    async with aiofiles.open(f"cache/thumb{videoid}.png", mode="wb") as f:
+                        await f.write(await resp.read())
 
         youtube = Image.open(f"cache/thumb{videoid}.png")
         image1 = changeImageSize(1280, 720, youtube)
-        image2 = image1.convert("RGBA")
-        background = image2.filter(filter=ImageFilter.BoxBlur(10))
+        
+        # Convert to RGBA for transparency support
+        background = image1.convert("RGBA")
+        
+        # 1. Background Blur
+        background = background.filter(filter=ImageFilter.BoxBlur(10))
         enhancer = ImageEnhance.Brightness(background)
         background = enhancer.enhance(0.5)
-        draw = ImageDraw.Draw(background)
+        
+        # 2. Add Black Attractive Card Overlay
+        overlay = Image.new("RGBA", background.size, (0, 0, 0, 0))
+        draw_overlay = ImageDraw.Draw(overlay)
+        
+        # Card Box Coordinates (Left, Top, Right, Bottom)
+        card_box = [60, 400, 1220, 650]
         
         try:
+            # Rounded rectangle for modern look (Pillow 8.2.0+)
+            draw_overlay.rounded_rectangle(
+                card_box, 
+                radius=25, 
+                fill=(10, 10, 10, 210),   # Semi-transparent black
+                outline=(255, 255, 255, 80), # Subtle white border
+                width=3
+            )
+        except AttributeError:
+            # Fallback for older PIL versions
+            draw_overlay.rectangle(card_box, fill=(10, 10, 10, 210), outline=(255, 255, 255, 80), width=3)
+            
+        background = Image.alpha_composite(background, overlay)
+        draw = ImageDraw.Draw(background)
+        
+        # 3. Fonts Loading
+        try:
             arial = ImageFont.truetype("PritiMusic/assets/font2.ttf", 30)
-            font = ImageFont.truetype("PritiMusic/assets/font.ttf", 30)
+            font = ImageFont.truetype("PritiMusic/assets/font.ttf", 35) 
+            stylish_font = ImageFont.truetype("PritiMusic/assets/font.ttf", 40)
         except:
             arial = ImageFont.load_default()
             font = ImageFont.load_default()
+            stylish_font = ImageFont.load_default()
             
-        # Handling Font Size (Compatible with old & new Pillow versions)
-        try:
-            # New Pillow
-            left, top, right, bottom = draw.textbbox((0, 0), "CLONNE MUSIC BOT    ", font=font)
-            text_width = right - left
-        except:
-            # Old Pillow
-            try:
-                text_width, _ = draw.textsize("CLONNE MUSIC BOT    ", font=font)
-            except:
-                text_width = 300
-
-        draw.text((1280 - text_width - 10, 10), "CLONNE MUSIC BOT    ", fill="green", font=font)
+        # 4. Elements INSIDE the Card
+        # Channel & Views
+        draw.text((90, 430), f"{channel} | {views[:23]}", (200, 200, 200), font=arial)
         
-        draw.text(
-            (55, 560),
-            f"{channel} | {views[:23]}",
-            (255, 255, 255),
-            font=arial,
-        )
-        draw.text(
-            (57, 600),
-            clear(title),
-            (255, 255, 255),
-            font=font,
-        )
-        draw.line(
-            [(55, 660), (1220, 660)],
-            fill="white",
-            width=5,
-            joint="curve",
-        )
-        draw.ellipse(
-            [(918, 648), (942, 672)],
-            outline="white",
-            fill="white",
-            width=15,
-        )
-        draw.text(
-            (36, 685),
-            "00:00",
-            (255, 255, 255),
-            font=arial,
-        )
-        draw.text(
-            (1185, 685),
-            f"{duration[:23]}",
-            (255, 255, 255),
-            font=arial,
-        )
+        # Title
+        draw.text((90, 480), clear(title), (255, 255, 255), font=font)
+        
+        # Progress Bar (Background Line - Inactive)
+        draw.line([(90, 570), (1190, 570)], fill=(255, 255, 255, 90), width=6, joint="curve")
+        
+        # Progress Bar (Active Line)
+        draw.line([(90, 570), (380, 570)], fill="white", width=6, joint="curve")
+        
+        # Progress Dot
+        draw.ellipse([(370, 558), (394, 582)], outline="white", fill="white", width=4)
+        
+        # Duration & Timer
+        draw.text((90, 595), "00:00", (255, 255, 255), font=arial)
+        draw.text((1080, 595), f"{duration[:23]}", (255, 255, 255), font=arial)
+        
+        # 5. Elements OUTSIDE (Bottom Left & Right)
+        # Left Bottom Text
+        draw.text((60, 670), "BETA BOT HUB", (255, 215, 0), font=stylish_font) # Gold/Yellow color
+        
+        # Right Bottom Text (Bot Name)
+        bot_name = "PritiMusic"
+        if hasattr(app, "name") and app.name:
+            bot_name = app.name
+        
+        # Calculate width to align right (approximate approach for PIL without getbbox)
+        # Assuming ~20 pixels per character for size 40 font
+        right_x = 1220 - (len(bot_name) * 20) 
+        draw.text((right_x, 670), bot_name, (255, 215, 0), font=stylish_font)
+
         try:
             os.remove(f"cache/thumb{videoid}.png")
         except:
             pass
+            
         background.save(f"cache/{videoid}.png")
         return f"cache/{videoid}.png"
         
     except Exception as e:
         print(e)
-        # ✅ FIX: Return Single Random Image instead of List
         return get_random_fallback_img()
