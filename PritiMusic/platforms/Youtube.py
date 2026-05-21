@@ -31,8 +31,8 @@ def cookie_txt_file():
         cookie_txt_file = random.choice(txt_files)
         with open(filename, 'a') as file:
             file.write(f'Choosen File : {cookie_txt_file}\n')
-        return f"""cookies/{str(cookie_txt_file).split("/")[-1]}"""
-    except:
+        return f"cookies/{str(cookie_txt_file).split('/')[-1]}"
+    except Exception:
         return None
 
 
@@ -49,9 +49,8 @@ class YouTubeAPI:
             "cookie_downloads": 0,
             "existing_files": 0
         }
-        # Blocking synchronous HTTP requests ke liye Thread Pool Executor
+        # Blocking requests ko handle karne ke liye thread pool
         self.executor = ThreadPoolExecutor(max_workers=5)
-
 
     async def exists(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
@@ -81,7 +80,7 @@ class YouTubeAPI:
                 for entity in message.caption_entities:
                     if entity.type == MessageEntityType.TEXT_LINK:
                         return entity.url
-        if offset in (None,):
+        if offset is None:
             return None
         return text[offset : offset + length]
 
@@ -204,7 +203,7 @@ class YouTubeAPI:
                         "duration_sec": duration_sec,
                         "thumbnail": video.get("thumbnails", [{}])[0].get("url", "").split("?")[0] if video.get("thumbnails") else "",
                     })
-                except:
+                except Exception:
                     continue
             return videos
         return None
@@ -252,7 +251,7 @@ class YouTubeAPI:
             for format in r["formats"]:
                 try:
                     str(format["format"])
-                except:
+                except Exception:
                     continue
                 if not "dash" in str(format["format"]).lower():
                     try:
@@ -261,7 +260,7 @@ class YouTubeAPI:
                         format["format_id"]
                         format["ext"]
                         format["format_note"]
-                    except:
+                    except Exception:
                         continue
                     formats_available.append(
                         {
@@ -290,7 +289,6 @@ class YouTubeAPI:
             search = VideosSearch(link, limit=10)
             search_results = (await search.next()).get("result", [])
 
-            # Filter videos longer than 1 hour
             for result in search_results:
                 duration_str = result.get("duration", "0:00")
                 try:
@@ -316,7 +314,6 @@ class YouTubeAPI:
                 selected["thumbnails"][0]["url"].split("?")[0],
                 selected["id"]
             )
-
         except Exception as e:
             logger.error(f"Error in slider: {str(e)}")
             raise ValueError("Failed to fetch video details")
@@ -331,45 +328,44 @@ class YouTubeAPI:
         songvideo: Union[bool, str] = None,
         format_id: Union[bool, str] = None,
         title: Union[bool, str] = None,
-    ) -> str:
+    ) -> tuple:
         
-        # UnboundLocalError fix karne ke liye link extraction block
         if videoid:
             vid_id = link
             link = self.base + link
         else:
-            # Agar direct full link pass ho rahi ho to ID nikalna zaroori hai backend proxy hit karne ke liye
             if "youtu.be/" in link:
-                vid_id = link.split("youtu.be/")[-1].split(/[?#]/)[0]
+                # Python safe splitting mechanism using regex
+                vid_id = re.split(r'[?#]', link.split("youtu.be/")[-1])[0]
             elif "v=" in link:
                 vid_id = link.split("v=")[1].split("&")[0]
             else:
                 vid_id = link
 
         loop = asyncio.get_running_loop()
+        os.makedirs("downloads", exist_ok=True)
 
         def create_session():
             session = requests.Session()
-            retries = Retry(total=3, backoff_factor=0.1)
+            retries = Retry(total=3, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504])
             session.mount('http://', HTTPAdapter(max_retries=retries))
             session.mount('https://', HTTPAdapter(max_retries=retries))
             return session
 
-        # Network requests ko dynamic dynamic executor ke sath async bnaya taaki main thread block na ho
         def sync_download(url, filepath, headers):
             try:
                 session = create_session()
                 response = session.get(url, headers=headers, stream=True, timeout=60, allow_redirects=True)
                 response.raise_for_status()
                 
-                chunk_size = 1024 * 1024  
+                chunk_size = 1024 * 1024
                 with open(filepath, 'wb') as file:
                     for chunk in response.iter_content(chunk_size=chunk_size):
                         if chunk:
                             file.write(chunk)
                 return filepath
             except Exception as e:
-                logger.error(f"Requests download failed: {str(e)}")
+                logger.error(f"Requests sync download failed: {str(e)}")
                 if os.path.exists(filepath):
                     os.remove(filepath)
                 return None
@@ -377,105 +373,53 @@ class YouTubeAPI:
         def sync_fetch_info(url, headers):
             try:
                 session = create_session()
-                res = session.get(url, headers=headers, timeout=60)
+                res = session.get(url, headers=headers, timeout=30)
                 return res.json()
             except Exception as e:
-                logger.error(f"Info fetch failed: {str(e)}")
+                logger.error(f"Proxy info fetch failed: {str(e)}")
                 return None
 
         async def download_with_requests(url, filepath, headers=None):
             return await loop.run_in_executor(self.executor, sync_download, url, filepath, headers)
 
-        async def audio_dl(vid_id):
-            try:
-                if not YT_API_KEY or not YTPROXY:
-                    logger.error("API KEY or Endpoint not set in config!")
-                    return None
-                
-                headers = {
-                    "x-api-key": f"{YT_API_KEY}",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-                }
-                filepath = os.path.join("downloads", f"{vid_id}.mp3")
-                if os.path.exists(filepath):
-                    return filepath
-                
-                songData = await loop.run_in_executor(self.executor, sync_fetch_info, f"{YTPROXY}/info/{vid_id}", headers)
-                if not songData: return None
-
-                status = songData.get('status')
-                if status == 'success':
-                    audio_url = songData['audio_url']                    
-                    return await download_with_requests(audio_url, filepath, headers)
-                elif status == 'error':
-                    logger.error(f"API Error: {songData.get('message', 'Unknown error')}")
+        async def audio_dl(v_id):
+            if not YT_API_KEY or not YTPROXY:
+                logger.error("YT_API_KEY or YTPROXY_URL missing in config!")
                 return None
-            except Exception as e:
-                logger.error(f"Error in audio download: {str(e)}")
-                return None
+            
+            headers = {"x-api-key": f"{YT_API_KEY}", "User-Agent": "Mozilla/5.0"}
+            filepath = os.path.join("downloads", f"{v_id}.mp3")
+            if os.path.exists(filepath):
+                return filepath
+            
+            song_data = await loop.run_in_executor(self.executor, sync_fetch_info, f"{YTPROXY}/info/{v_id}", headers)
+            if song_data and song_data.get('status') == 'success':
+                return await download_with_requests(song_data['audio_url'], filepath, headers)
+            return None
         
-        async def video_dl(vid_id):
-            try:
-                if not YT_API_KEY or not YTPROXY:
-                    logger.error("API KEY or Endpoint not set in config!")
-                    return None
-                
-                headers = {
-                    "x-api-key": f"{YT_API_KEY}",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-                }
-                filepath = os.path.join("downloads", f"{vid_id}.mp4")
-                if os.path.exists(filepath):
-                    return filepath
-                
-                videoData = await loop.run_in_executor(self.executor, sync_fetch_info, f"{YTPROXY}/info/{vid_id}", headers)
-                if not videoData: return None
-
-                status = videoData.get('status')
-                if status == 'success':
-                    video_url = videoData['video_url']
-                    return await download_with_requests(video_url, filepath, headers)
-                elif status == 'error':
-                    logger.error(f"API Error: {videoData.get('message', 'Unknown error')}")
+        async def video_dl(v_id):
+            if not YT_API_KEY or not YTPROXY:
+                logger.error("YT_API_KEY or YTPROXY_URL missing in config!")
                 return None
-            except Exception as e:
-                logger.error(f"Error in video download: {str(e)}")
-                return None
-        
-        async def song_video_dl():
-            try:
-                if not YT_API_KEY or not YTPROXY: return None
-                headers = {"x-api-key": f"{YT_API_KEY}", "User-Agent": "Mozilla/5.0"}
-                filepath = f"downloads/{title}.mp4"
-                if os.path.exists(filepath): return filepath
-                
-                videoData = await loop.run_in_executor(self.executor, sync_fetch_info, f"{YTPROXY}/info/{vid_id}", headers)
-                if videoData and videoData.get('status') == 'success':
-                    return await download_with_requests(videoData['video_url'], filepath, headers)
-                return None
-            except Exception as e:
-                logger.error(f"Error in song video download: {str(e)}")
-                return None
-
-        async def song_audio_dl():
-            try:
-                if not YT_API_KEY or not YTPROXY: return None
-                headers = {"x-api-key": f"{YT_API_KEY}", "User-Agent": "Mozilla/5.0"}
-                filepath = f"downloads/{title}.mp3"
-                if os.path.exists(filepath): return filepath
-                
-                audioData = await loop.run_in_executor(self.executor, sync_fetch_info, f"{YTPROXY}/info/{vid_id}", headers)
-                if audioData and audioData.get('status') == 'success':
-                    return await download_with_requests(audioData['audio_url'], filepath, headers)
-                return None
-            except Exception as e:
-                logger.error(f"Error in song audio download: {str(e)}")
-                return None
+            
+            headers = {"x-api-key": f"{YT_API_KEY}", "User-Agent": "Mozilla/5.0"}
+            filepath = os.path.join("downloads", f"{v_id}.mp4")
+            if os.path.exists(filepath):
+                return filepath
+            
+            video_data = await loop.run_in_executor(self.executor, sync_fetch_info, f"{YTPROXY}/info/{v_id}", headers)
+            if video_data and video_data.get('status') == 'success':
+                return await download_with_requests(video_data['video_url'], filepath, headers)
+            return None
 
         if songvideo:
-            return await song_video_dl()
+            filename = f"downloads/{title}.mp4"
+            downloaded_file = await download_with_requests(f"{YTPROXY}/download/{vid_id}" if YTPROXY else link, filename, {"x-api-key": f"{YT_API_KEY}"})
+            direct = True
         elif songaudio:
-            return await song_audio_dl()
+            filename = f"downloads/{title}.mp3"
+            downloaded_file = await download_with_requests(f"{YTPROXY}/download/{vid_id}" if YTPROXY else link, filename, {"x-api-key": f"{YT_API_KEY}"})
+            direct = True
         elif video:
             direct = True
             downloaded_file = await video_dl(vid_id)
