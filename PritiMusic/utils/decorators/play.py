@@ -1,5 +1,6 @@
+import os
 import asyncio
-
+import random
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.errors import (
     ChatAdminRequired,
@@ -22,17 +23,26 @@ from PritiMusic.utils.database import (
     is_maintenance,
 )
 from PritiMusic.utils.inline import botplaylist_markup
-from config import PLAYLIST_IMG_URL, SUPPORT_CHAT, adminlist
+from config import PLAYLIST_IMG_URL, SUPPORT_CHAT, adminlist, PLAYLIST_IMG_URL
 from strings import get_string
 
 links = {}
 clinks = {}
+
+# Safe image checking logic to handle ValueError: Invalid File
+def get_safe_playlist_img():
+    if PLAYLIST_IMG_URL and str(PLAYLIST_IMG_URL).strip().lower() != "none":
+        return PLAYLIST_IMG_URL
+    if os.path.exists("assets/default_thumb.png"):
+        return "assets/default_thumb.png"
+    return "https://picsum.photos/1280/720"
 
 
 def PlayWrapper(command):
     async def wrapper(client, message):
         language = await get_lang(message.chat.id)
         _ = get_string(language)
+        
         if message.sender_chat:
             upl = InlineKeyboardMarkup(
                 [
@@ -49,7 +59,7 @@ def PlayWrapper(command):
         if await is_maintenance() is False:
             if message.from_user.id not in SUDOERS:
                 return await message.reply_text(
-                    text=f"{app.mention} ɪs ᴜɴᴅᴇʀ ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ, ᴠɪsɪᴛ <a href={SUPPORT_CHAT}>sᴜᴘᴘᴏʀᴛ ᴄʜᴀᴛ</a> ғᴏʀ ᴋɴᴏᴡɪɴɢ ᴛʜᴇ ʀᴇᴀsᴏɴ.",
+                    text=f"{app.mention} ɪs ᴜɴᴇʀ ᴍᴀɪɴᴛᴇɴᴀɴᴄะ, ᴠɪsɪᴛ <a href={SUPPORT_CHAT}>sᴜᴘᴘᴏʀᴛ ᴄʜᴀᴛ</a> ғᴏʀ ᴋɴᴏᴡɪɴɢ ᴛʜᴇ ʀᴇᴀsᴏɴ.",
                     disable_web_page_preview=True,
                 )
 
@@ -69,16 +79,18 @@ def PlayWrapper(command):
             else None
         )
         url = await YouTube.url(message)
+        
         if audio_telegram is None and video_telegram is None and url is None:
             if len(message.command) < 2:
                 if "stream" in message.command:
                     return await message.reply_text(_["str_1"])
                 buttons = botplaylist_markup(_)
                 return await message.reply_photo(
-                    photo=PLAYLIST_IMG_URL,
+                    photo=get_safe_playlist_img(),
                     caption=_["play_18"],
                     reply_markup=InlineKeyboardMarkup(buttons),
                 )
+                
         if message.command[0][0] == "c":
             chat_id = await get_cmode(message.chat.id)
             if chat_id is None:
@@ -91,8 +103,10 @@ def PlayWrapper(command):
         else:
             chat_id = message.chat.id
             channel = None
+            
         playmode = await get_playmode(message.chat.id)
         playty = await get_playtype(message.chat.id)
+        
         if playty != "Everyone":
             if message.from_user.id not in SUDOERS:
                 admins = adminlist.get(message.chat.id)
@@ -101,6 +115,7 @@ def PlayWrapper(command):
                 else:
                     if message.from_user.id not in admins:
                         return await message.reply_text(_["play_4"])
+                        
         if message.command[0][0] == "v":
             video = True
         else:
@@ -108,6 +123,7 @@ def PlayWrapper(command):
                 video = True
             else:
                 video = True if message.command[0][1] == "v" else None
+                
         if message.command[0][-1] == "e":
             if not await is_active_chat(chat_id):
                 return await message.reply_text(_["play_16"])
@@ -117,19 +133,34 @@ def PlayWrapper(command):
 
         if not await is_active_chat(chat_id):
             userbot = await get_assistant(chat_id)
+            
+            # --- FIX: Dynamic Assistant Attribute Properties ---
+            if hasattr(userbot, "me") and userbot.me:
+                ub_id = userbot.me.id
+                ub_username = userbot.me.username
+                ub_name = userbot.me.first_name
+            else:
+                ub_id = userbot.id
+                ub_username = userbot.username
+                ub_name = userbot.name
+
             try:
                 try:
-                    get = await app.get_chat_member(chat_id, userbot.id)
+                    # Assistant checking via its own client instance
+                    get = await userbot.get_chat_member(chat_id, "me")
                 except ChatAdminRequired:
                     return await message.reply_text(_["call_1"])
+                except Exception:
+                    raise UserNotParticipant
+                    
                 if (
                     get.status == ChatMemberStatus.BANNED
                     or get.status == ChatMemberStatus.RESTRICTED
                 ):
                     return await message.reply_text(
                         _["call_2"].format(
-                            app.mention, userbot.id, userbot.name, userbot.username
-                        ), reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(text= "๏ 𝗨ɴʙᴀɴ 𝗔ssɪsᴛᴀɴᴛ ๏", callback_data=f"unban_assistant")]])
+                            app.mention, ub_id, ub_name, ub_username
+                        ), reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(text="๏ 𝗨ɴʙᴀɴ 𝗔ssɪsᴛᴀɴᴛ ๏", callback_data=f"unban_assistant")]])
                     )
             except UserNotParticipant:
                 if chat_id in links:
@@ -161,7 +192,7 @@ def PlayWrapper(command):
                     await userbot.join_chat(invitelink)
                 except InviteRequestSent:
                     try:
-                        await app.approve_chat_join_request(chat_id, userbot.id)
+                        await app.approve_chat_join_request(chat_id, ub_id)
                     except Exception as e:
                         return await message.reply_text(
                             _["call_3"].format(app.mention, type(e).__name__)
@@ -176,7 +207,6 @@ def PlayWrapper(command):
                     )
 
                 links[chat_id] = invitelink
-
                 try:
                     await userbot.resolve_peer(chat_id)
                 except:
@@ -196,11 +226,13 @@ def PlayWrapper(command):
 
     return wrapper
 
+
 def CPlayWrapper(command):
     async def wrapper(client, message):
         i = await client.get_me()
         language = await get_lang(message.chat.id)
         _ = get_string(language)
+        
         if message.sender_chat:
             upl = InlineKeyboardMarkup(
                 [
@@ -217,7 +249,7 @@ def CPlayWrapper(command):
         if await is_maintenance() is False:
             if message.from_user.id not in SUDOERS:
                 return await message.reply_text(
-                    text=f"{i.mention} ɪs ᴜɴᴅᴇʀ ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ, ᴠɪsɪᴛ <a href={SUPPORT_CHAT}>sᴜᴘᴘᴏʀᴛ ᴄʜᴀᴛ</a> ғᴏʀ ᴋɴᴏᴡɪɴɢ ᴛʜᴇ ʀᴇᴀsᴏɴ.",
+                    text=f"{i.mention} ɪs ᴜɴᴇʀ ᴍᴀɪɴᴛᴇɴᴀɴᴄะ, ᴠɪsɪᴛ <a href={SUPPORT_CHAT}>sᴜᴘᴘᴏʀᴛ ᴄʜᴀᴛ</a> ғᴏʀ ᴋɴۆᴡɪɴɢ ᴛʜᴇ ʀᴇᴀsᴏɴ.",
                     disable_web_page_preview=True,
                 )
 
@@ -237,16 +269,18 @@ def CPlayWrapper(command):
             else None
         )
         url = await YouTube.url(message)
+        
         if audio_telegram is None and video_telegram is None and url is None:
             if len(message.command) < 2:
                 if "stream" in message.command:
                     return await message.reply_text(_["str_1"])
                 buttons = botplaylist_markup(_)
                 return await message.reply_photo(
-                    photo=PLAYLIST_IMG_URL,
+                    photo=get_safe_playlist_img(),
                     caption=_["play_18"],
                     reply_markup=InlineKeyboardMarkup(buttons),
                 )
+                
         if message.command[0][0] == "c":
             chat_id = await get_cmode(message.chat.id)
             if chat_id is None:
@@ -259,8 +293,10 @@ def CPlayWrapper(command):
         else:
             chat_id = message.chat.id
             channel = None
+            
         playmode = await get_playmode(message.chat.id)
         playty = await get_playtype(message.chat.id)
+        
         if playty != "Everyone":
             if message.from_user.id not in SUDOERS:
                 admins = adminlist.get(message.chat.id)
@@ -269,6 +305,7 @@ def CPlayWrapper(command):
                 else:
                     if message.from_user.id not in admins:
                         return await message.reply_text(_["play_4"])
+                        
         if message.command[0][0] == "v":
             video = True
         else:
@@ -276,6 +313,7 @@ def CPlayWrapper(command):
                 video = True
             else:
                 video = True if message.command[0][1] == "v" else None
+                
         if message.command[0][-1] == "e":
             if not await is_active_chat(chat_id):
                 return await message.reply_text(_["play_16"])
@@ -289,8 +327,8 @@ def CPlayWrapper(command):
             else:
                 userbot = await get_assistant(chat_id)
             
-            # --- FIX: Helper variables ---
-            if hasattr(userbot, "me"):
+            # --- FIX: Helper variables for client ---
+            if hasattr(userbot, "me") and userbot.me:
                 ub_id = userbot.me.id
                 ub_username = userbot.me.username
                 ub_name = userbot.me.first_name
@@ -301,11 +339,8 @@ def CPlayWrapper(command):
 
             try:
                 try:
-                    # --- FIX START: Self-Check via Assistant ---
                     get = await userbot.get_chat_member(chat_id, "me")
-                    # --- FIX END ---
                 except:
-                    # Agar Assistant khud check nahi kar paaya, matlab wo group me nahi hai
                     raise UserNotParticipant
 
                 if (
@@ -362,7 +397,6 @@ def CPlayWrapper(command):
                     )
 
                 clinks[chat_id] = invitelink
-
                 try:
                     await userbot.resolve_peer(chat_id)
                 except:
