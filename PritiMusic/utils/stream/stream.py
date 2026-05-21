@@ -141,3 +141,37 @@ async def stream(
                 if chat_id in db and isinstance(db[chat_id], list) and len(db[chat_id]) > 0:
                     db[chat_id][0]["mystic"] = run
                     db[chat_id][0]["markup"] = "stream"
+            except Exception as e:
+                print(f"YouTube Stream Error: {e}")
+
+    # ==================== TELEGRAM STREAMING ====================
+    elif streamtype == "telegram":
+        file_path = result["path"]
+        title = (result["title"]).title()
+        if await is_active_chat(chat_id):
+            await put_queue(chat_id, original_chat_id, file_path, title, result["dur"], user_name, streamtype, user_id, "video" if video else "audio")
+            
+            if chat_id in db and isinstance(db[chat_id], list):
+                pos = len(db[chat_id]) - 1
+                await app.send_message(
+                    chat_id=original_chat_id, 
+                    text=_["queue_4"].format(pos, title[:27], result["dur"], user_name), 
+                    reply_markup=InlineKeyboardMarkup(aq_markup(_, chat_id))
+                )
+        else:
+            if not forceplay: 
+                db[chat_id] = []
+            await Lucky.join_call(chat_id, original_chat_id, file_path, video=video)
+            await put_queue(chat_id, original_chat_id, file_path, title, result["dur"], user_name, streamtype, user_id, "video" if video else "audio", forceplay=forceplay)
+            
+            try:
+                run = await app.send_message(
+                    original_chat_id,
+                    text=_["stream_2"].format(title[:23], result["dur"], user_name),
+                    reply_markup=InlineKeyboardMarkup(stream_markup(_, chat_id))
+                )
+                if chat_id in db and isinstance(db[chat_id], list) and len(db[chat_id]) > 0:
+                    db[chat_id][0]["mystic"] = run
+                    db[chat_id][0]["markup"] = "stream"
+            except Exception as e:
+                print(f"Telegram Stream Error: {e}")
