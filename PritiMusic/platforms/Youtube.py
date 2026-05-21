@@ -13,7 +13,8 @@ from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from ytSearch import VideosSearch, Playlist
+# Corrected Import for Async YouTube Search
+from youtubesearchpython.__future__ import VideosSearch, Playlist
 from PritiMusic import LOGGER
 from PritiMusic.utils.database import is_on_off
 from PritiMusic.utils.formatters import time_to_seconds
@@ -304,8 +305,9 @@ class YouTubeAPI:
                 except (ValueError, IndexError):
                     continue
 
-            if not results or query_type >= len(results):
-                raise ValueError("No suitable videos found within duration limit")
+            if not delete_or_not or query_type >= len(results): # fallbacks variables safe mapping
+                if not results or query_type >= len(results):
+                    raise ValueError("No suitable videos found within duration limit")
 
             selected = results[query_type]
             return (
@@ -335,7 +337,6 @@ class YouTubeAPI:
             link = self.base + link
         else:
             if "youtu.be/" in link:
-                # Python safe splitting mechanism using regex
                 vid_id = re.split(r'[?#]', link.split("youtu.be/")[-1])[0]
             elif "v=" in link:
                 vid_id = link.split("v=")[1].split("&")[0]
