@@ -34,14 +34,12 @@ OWNER_ID = int(getenv("OWNER_ID", "0"))
 HEROKU_APP_NAME = getenv("HEROKU_APP_NAME")
 HEROKU_API_KEY = getenv("HEROKU_API_KEY")
 
-# यहाँ पूरा URL देना ज़रूरी है ताकि git.py इसे सही से split कर सके
+# Git configuration for seamless repo tracking
 UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
     "https://github.com/MAHI-BEATS/RONAK-KE-MA-KE-KALI-CHUT",
 )
 UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main")
-
-# डिफ़ॉल्ट वैल्यू "none" की है ताकि Heroku क्रेडेंशियल एरर (exit code 128) न दे
 GIT_TOKEN = getenv("GIT_TOKEN", "none")
 
 # --- EXTERNAL LINKS ---
@@ -78,7 +76,7 @@ votemode = {}
 autoclean = []
 confirmer = {}
 
-# --- IMAGE URLS (Split for random choice) ---
+# --- IMAGE URLS (Split safely into lists) ---
 START_IMG_URL = getenv("START_IMG_URL", "https://files.catbox.moe/n22tbs.jpg").split()
 HELP_IMG_URL = getenv("HELP_IMG_URL", "https://files.catbox.moe/zbl2i7.jpg").split()
 PING_IMG_URL = getenv("PING_IMG_URL", "https://files.catbox.moe/n22tbs.jpg").split()
