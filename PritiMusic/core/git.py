@@ -1,14 +1,7 @@
 import asyncio
 import shlex
 from typing import Tuple
-
-from git import Repo
-from git.exc import GitCommandError, InvalidGitRepositoryError
-
-import config
-
-from ..logging import LOGGER
-
+from PritiMusic.logging import LOGGER
 
 def install_req(cmd: str) -> Tuple[str, str, int, int]:
     async def install_requirements():
@@ -31,8 +24,8 @@ def install_req(cmd: str) -> Tuple[str, str, int, int]:
 
 def git():
     """
-    GitHub ऑटो-अपडेट फ़ंक्शन को पूरी तरह बायपास कर दिया गया है 
-    ताकि Heroku पर 'fatal: could not read Username' एरर से बोट क्रैश न हो।
+    Disabled git updates and fetching to prevent Heroku boot crashes.
+    Git token and upstream repository verification are bypassed.
     """
-    LOGGER(__name__).info("Git update check skipped to prevent Heroku boot crash.")
+    LOGGER(__name__).info("Git auto-update bypass triggered successfully.")
     return
