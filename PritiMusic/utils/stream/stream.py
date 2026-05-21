@@ -3,6 +3,7 @@ import random
 from typing import Union
 
 from pyrogram.types import InlineKeyboardMarkup
+import pyrogram.errors
 
 import config
 from PritiMusic import Carbon, YouTube, app
@@ -13,15 +14,15 @@ from PritiMusic.utils.exceptions import AssistantErr
 from PritiMusic.utils.inline import aq_markup, close_markup, stream_markup
 from PritiMusic.utils.stream.queue import put_queue, put_queue_index
 from PritiMusic.utils.pastebin import LuckyBin
-from PritiMusic.utils.thumbnails import get_thumb  # Aapka naya dynamic thumbnail core
+from PritiMusic.utils.thumbnails import get_thumb  # Thumbnail Module
 
-# ✅ Helper to get Random Image safely if list contains multiple links
+# Dynamic random string image utility
 def get_random_img(img_list):
     if img_list:
         if isinstance(img_list, list):
             return random.choice(img_list)
         return img_list
-    return "https://files.catbox.moe/n22tbs.jpg" # Absolute fallback
+    return "https://files.catbox.moe/n22tbs.jpg"
 
 async def stream(
     _,
@@ -93,6 +94,11 @@ async def stream(
                     )
                 except Exception:
                     raise AssistantErr(_["play_14"])
+                
+                # 'None' File Path Error Fix
+                if not file_path or str(file_path).strip() == "None":
+                    raise AssistantErr("Download failed. File path received as None.")
+
                 await Lucky.join_call(
                     chat_id,
                     original_chat_id,
@@ -113,27 +119,36 @@ async def stream(
                     forceplay=forceplay,
                 )
                 
-                # ✨ Fix: await your new get_thumb card generation
-                img = await get_thumb(vidid)
+                # Await dynamic thumbnail generator securely
+                try:
+                    img = await get_thumb(vidid)
+                except Exception:
+                    img = get_random_img(config.PLAYLIST_IMG_URL)
+                
                 if not img: 
                     img = get_random_img(config.PLAYLIST_IMG_URL)
 
                 button = stream_markup(_, chat_id)
-                run = await app.send_photo(
-                    original_chat_id,
-                    photo=img,
-                    caption=_["stream_1"].format(
-                        f"https://t.me/{app.username}?start=info_{vidid}",
-                        title[:23],
-                        duration_min,
-                        user_name,
-                    ),
-                    reply_markup=InlineKeyboardMarkup(button),
-                    has_spoiler=True
-                )
-                if chat_id in db and db[chat_id]:
-                    db[chat_id][0]["mystic"] = run
-                    db[chat_id][0]["markup"] = "stream"
+                try:
+                    run = await app.send_photo(
+                        original_chat_id,
+                        photo=img,
+                        caption=_["stream_1"].format(
+                            f"https://t.me/{app.username}?start=info_{vidid}",
+                            title[:23],
+                            duration_min,
+                            user_name,
+                        ),
+                        reply_markup=InlineKeyboardMarkup(button),
+                        has_spoiler=True
+                    )
+                    # IndexError Fix via Safety Checks
+                    if chat_id in db and isinstance(db[chat_id], list) and len(db[chat_id]) > 0:
+                        db[chat_id][0]["mystic"] = run
+                        db[chat_id][0]["markup"] = "stream"
+                except Exception:
+                    pass
+
         if count == 0:
             return
         else:
@@ -170,6 +185,10 @@ async def stream(
             )
         except Exception:
             raise AssistantErr(_["play_14"])
+        
+        # 'None' File Path Error Fix
+        if not file_path or str(file_path).strip() == "None":
+            raise AssistantErr("Download failed. File path received as None.")
         
         if await is_active_chat(chat_id):
             await put_queue(
@@ -216,27 +235,34 @@ async def stream(
                 forceplay=forceplay,
             )
             
-            # ✨ Fix: await your new get_thumb card generation
-            img = await get_thumb(vidid)
+            try:
+                img = await get_thumb(vidid)
+            except Exception:
+                img = get_random_img(config.YOUTUBE_IMG_URL)
+                
             if not img: 
                 img = get_random_img(config.YOUTUBE_IMG_URL)
 
             button = stream_markup(_, chat_id)
-            run = await app.send_photo(
-                original_chat_id,
-                photo=img,
-                caption=_["stream_1"].format(
-                    f"https://t.me/{app.username}?start=info_{vidid}",
-                    title[:23],
-                    duration_min,
-                    user_name,
-                ),
-                reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True
-            )
-            if chat_id in db and db[chat_id]:
-                db[chat_id][0]["mystic"] = run
-                db[chat_id][0]["markup"] = "stream"
+            try:
+                run = await app.send_photo(
+                    original_chat_id,
+                    photo=img,
+                    caption=_["stream_1"].format(
+                        f"https://t.me/{app.username}?start=info_{vidid}",
+                        title[:23],
+                        duration_min,
+                        user_name,
+                    ),
+                    reply_markup=InlineKeyboardMarkup(button),
+                    has_spoiler=True
+                )
+                # IndexError Fix via Safety Checks
+                if chat_id in db and isinstance(db[chat_id], list) and len(db[chat_id]) > 0:
+                    db[chat_id][0]["mystic"] = run
+                    db[chat_id][0]["markup"] = "stream"
+            except Exception:
+                pass
 
     elif streamtype == "soundcloud":
         file_path = result["filepath"]
@@ -281,18 +307,21 @@ async def stream(
                 forceplay=forceplay,
             )
             button = stream_markup(_, chat_id)
-            run = await app.send_photo(
-                original_chat_id,
-                photo=get_random_img(config.SOUNCLOUD_IMG_URL),
-                caption=_["stream_1"].format(
-                    config.SUPPORT_CHAT, title[:23], duration_min, user_name
-                ),
-                reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True
-            )
-            if chat_id in db and db[chat_id]:
-                db[chat_id][0]["mystic"] = run
-                db[chat_id][0]["markup"] = "tg"
+            try:
+                run = await app.send_photo(
+                    original_chat_id,
+                    photo=get_random_img(config.SOUNCLOUD_IMG_URL),
+                    caption=_["stream_1"].format(
+                        config.SUPPORT_CHAT, title[:23], duration_min, user_name
+                    ),
+                    reply_markup=InlineKeyboardMarkup(button),
+                    has_spoiler=True
+                )
+                if chat_id in db and isinstance(db[chat_id], list) and len(db[chat_id]) > 0:
+                    db[chat_id][0]["mystic"] = run
+                    db[chat_id][0]["markup"] = "tg"
+            except Exception:
+                pass
 
     elif streamtype == "telegram":
         file_path = result["path"]
@@ -320,175 +349,3 @@ async def stream(
             await app.send_message(
                 chat_id=original_chat_id,
                 text=_["queue_4"].format(position, title[:27], duration_min, user_name),
-                reply_markup=InlineKeyboardMarkup(button),
-            )
-        else:
-            if not forceplay:
-                db[chat_id] = []
-            await Lucky.join_call(chat_id, original_chat_id, file_path, video=status)
-            await put_queue(
-                chat_id,
-                original_chat_id,
-                file_path,
-                title,
-                duration_min,
-                user_name,
-                streamtype,
-                user_id,
-                "video" if video else "audio",
-                forceplay=forceplay,
-            )
-            if video:
-                await add_active_video_chat(chat_id)
-            button = stream_markup(_, chat_id)
-            
-            tg_img = get_random_img(config.TELEGRAM_VIDEO_URL) if video else get_random_img(config.TELEGRAM_AUDIO_URL)
-            
-            run = await app.send_photo(
-                original_chat_id,
-                photo=tg_img,
-                caption=_["stream_1"].format(link, title[:23], duration_min, user_name),
-                reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True
-            )
-            if chat_id in db and db[chat_id]:
-                db[chat_id][0]["mystic"] = run
-                db[chat_id][0]["markup"] = "tg"
-
-    elif streamtype == "live":
-        link = result["link"]
-        vidid = result["vidid"]
-        title = (result["title"]).title()
-        thumbnail = result["thumb"]
-        duration_min = "Live Track"
-        status = True if video else None
-        if await is_active_chat(chat_id):
-            await put_queue(
-                chat_id,
-                original_chat_id,
-                f"live_{vidid}",
-                title,
-                duration_min,
-                user_name,
-                vidid,
-                user_id,
-                "video" if video else "audio",
-            )
-            try:
-                position = len(db.get(chat_id)) - 1
-            except Exception:
-                position = 1
-            button = aq_markup(_, chat_id)
-            await app.send_message(
-                chat_id=original_chat_id,
-                text=_["queue_4"].format(position, title[:27], duration_min, user_name),
-                reply_markup=InlineKeyboardMarkup(button),
-            )
-        else:
-            if not forceplay:
-                db[chat_id] = []
-            n, file_path = await YouTube.video(link)
-            if n == 0:
-                raise AssistantErr(_["str_3"])
-            await Lucky.join_call(
-                chat_id,
-                original_chat_id,
-                file_path,
-                video=status,
-                image=thumbnail if thumbnail else None,
-            )
-            await put_queue(
-                chat_id,
-                original_chat_id,
-                f"live_{vidid}",
-                title,
-                duration_min,
-                user_name,
-                vidid,
-                user_id,
-                "video" if video else "audio",
-                forceplay=forceplay,
-            )
-            
-            # ✨ Fix: await your new get_thumb card generation
-            img = await get_thumb(vidid)
-            if not img: 
-                img = get_random_img(config.YOUTUBE_IMG_URL)
-
-            button = stream_markup(_, chat_id)
-            run = await app.send_photo(
-                original_chat_id,
-                photo=img,
-                caption=_["stream_1"].format(
-                    f"https://t.me/{app.username}?start=info_{vidid}",
-                    title[:23],
-                    duration_min,
-                    user_name,
-                ),
-                reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True
-            )
-            if chat_id in db and db[chat_id]:
-                db[chat_id][0]["mystic"] = run
-                db[chat_id][0]["markup"] = "tg"
-
-    elif streamtype == "index":
-        link = result
-        title = "ɪɴᴅᴇx ᴏʀ ᴍ3ᴜ8 ʟɪɴᴋ"
-        duration_min = "00:00"
-        if await is_active_chat(chat_id):
-            await put_queue_index(
-                chat_id,
-                original_chat_id,
-                "index_url",
-                title,
-                duration_min,
-                user_name,
-                link,
-                "video" if video else "audio",
-            )
-            try:
-                position = len(db.get(chat_id)) - 1
-            except Exception:
-                position = 1
-            button = aq_markup(_, chat_id)
-            await mystic.edit_text(
-                text=_["queue_4"].format(position, title[:27], duration_min, user_name),
-                reply_markup=InlineKeyboardMarkup(button),
-            )
-        else:
-            if not forceplay:
-                db[chat_id] = []
-            await Lucky.join_call(
-                chat_id,
-                original_chat_id,
-                link,
-                video=True if video else None,
-            )
-            await put_queue_index(
-                chat_id,
-                original_chat_id,
-                "index_url",
-                title,
-                duration_min,
-                user_name,
-                link,
-                "video" if video else "audio",
-                forceplay=forceplay,
-            )
-            button = stream_markup(_, chat_id)
-            
-            run = await app.send_photo(
-                original_chat_id,
-                photo=get_random_img(config.STREAM_IMG_URL),
-                caption=_["stream_2"].format(user_name),
-                reply_markup=InlineKeyboardMarkup(button),
-                has_spoiler=True
-            )
-            if chat_id in db and db[chat_id]:
-                db[chat_id][0]["mystic"] = run
-                db[chat_id][0]["markup"] = "tg"
-            try:
-                await mystic.delete()
-            except Exception:
-                pass
