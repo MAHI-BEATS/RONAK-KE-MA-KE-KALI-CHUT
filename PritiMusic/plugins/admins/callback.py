@@ -44,7 +44,7 @@ async def settings_back_helper(client, CallbackQuery, _):
     await CallbackQuery.edit_message_media(
         media=InputMediaPhoto(
             media=img,
-            caption=_["start_2"].format(CallbackQuery.from_user.mention, app.mention)
+            caption=_["start_2"].format(CallbackQuery.from_user.mention, app.mention) + "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️"
         ),
         reply_markup=InlineKeyboardMarkup(private_panel(_))
     )
@@ -73,16 +73,16 @@ async def clone_page_cb(client, CallbackQuery, _):
         "/clone – <b>ᴄʟᴏɴᴇ ʏᴏᴜʀ ᴏᴡɴ ʙᴏᴛ ᴜsɪɴɢ ʙᴏᴛ ᴛᴏᴋᴇɴ ғʀᴏᴍ @BotFather.</b>\n"
         "<b>ᴇxᴀᴍᴘʟᴇ:</b> /clone <code>ᴘᴀsᴛᴇ_ᴛᴏᴋᴇɴ_ʜᴇʀᴇ</code>\n\n"
         "/rmbot – <b>ᴅᴇʟᴇᴛᴇ ʏᴏᴜʀ ᴄʟᴏɴᴇᴅ ʙᴏᴛ.</b>\n\n"
-        "/mybot – <b>ᴄʜᴇᴄᴋ ᴛʜᴇ ʙᴏᴛs ʏᴏᴜ'ᴠᴇ ᴄʟᴏɴᴇᴅ.</b></blockquote>"
+        "/mybot – <b>ᴄʜᴇᴄᴋ ᴛʜᴇ ʙᴏᴛs ʏᴏᴜ'ᴠᴇ ᴄʟᴏɴᴇᴅ.</b></blockquote>\n\n"
+        "🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️"
     )
     await CallbackQuery.edit_message_media(
         media=InputMediaVideo(
-            media="https://files.catbox.moe/rxiwb3.mp4",
+            media="https://files.catbox.moe/hfopt1.mp4",
             caption=clone_text
         ),
         reply_markup=InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(text="🎁 ᴅᴏɴᴀᴛᴇ (₹𝟷𝟶)", callback_data="donate_lucky")],
                 [InlineKeyboardButton(text="⌯ ʙᴀᴄᴋ ⌯", callback_data="settingsback_helper")]
             ]
         )
@@ -97,11 +97,12 @@ async def gib_source_cb(client, CallbackQuery, _):
         "**📂 ʙᴏᴛ sᴏᴜʀᴄᴇ ᴄᴏᴅᴇ :**\n\n"
         "<b>ʜᴇʀᴇ ɪs ᴛʜᴇ ᴏғғɪᴄɪᴀʟ sᴏᴜʀᴄᴇ ᴄᴏᴅᴇ ᴏғ ᴛʜɪs ʙᴏᴛ.</b>\n"
         "<b>ʏᴏᴜ ᴄᴀɴ ғᴏʀᴋ ᴛʜɪs ʀᴇᴘᴏ ᴀɴᴅ ᴍᴀᴋᴇ ʏᴏᴜʀ ᴏᴡɴ ʙᴏᴛ.</b>\n\n"
-        "🔗 **ɢɪᴛʜᴜʙ:** [Click Here](https://t.me/+Ax_LrCUfmAYwOGY1)"
+        "🔗 **ɢɪᴛʜᴜʙ:** [Click Here](https://t.me/SUKOON_S)\n\n"
+        "🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️"
     )
     await CallbackQuery.edit_message_media(
         media=InputMediaVideo(
-            media="https://files.catbox.moe/rxiwb3.mp4",
+            media="https://files.catbox.moe/hfopt1.mp4",
             caption=source_text
         ),
         reply_markup=InlineKeyboardMarkup(
@@ -109,32 +110,6 @@ async def gib_source_cb(client, CallbackQuery, _):
                 [InlineKeyboardButton(text="ᴏᴡɴᴇʀ", user_id=config.OWNER_ID)],
                 [InlineKeyboardButton(text="⌯ ʙᴀᴄᴋ ⌯", callback_data="settingsback_helper")]
             ]
-        )
-    )
-
-# --- DONATE PAGE ---
-@app.on_callback_query(filters.regex("donate_lucky") & ~BANNED_USERS)
-@languageCB
-async def donate_callback(client, CallbackQuery, _):
-    try:
-        await CallbackQuery.answer("Support our hardwork! ❤️")
-    except:
-        pass
-    
-    donate_text = """
-<blockquote expandable><b><u>❤️ sᴜᴘᴘᴏʀᴛ ᴍᴜsɪᴄ ʙᴏᴛ ᴅᴇᴠᴇʟᴏᴘᴍᴇɴᴛ</u></b>
-<b>ʜᴇʟʟᴏ ᴜsᴇʀs, ɪ ᴡᴏʀᴋ ʜᴀʀᴅ ᴛᴏ ᴍᴀᴋᴇ ᴛʜᴇsᴇ ᴀᴍᴀᴢɪɴɢ ᴍᴜsɪᴄ ʙᴏᴛs ғᴏʀ ʏᴏᴜ.</b>
-<b>ᴘʟᴇᴀsᴇ ᴅᴏɴᴀᴛᴇ ᴏɴʟʏ ₹𝟷𝟶 (ᴊᴜsᴛ ᴀ ᴄᴜᴘ ᴏғ ᴛᴇᴀ ᴘʀɪᴄᴇ).</b>
-<b>sᴄᴀɴ ᴛʜᴇ ǫʀ ᴄᴏᴅᴇ ᴀʙᴏᴠᴇ ᴛᴏ ᴅᴏɴᴀᴛᴇ ᴠɪᴀ ɢᴘᴀʏ, ᴘʜᴏɴᴇᴘᴇ ᴏʀ ᴘᴀʏᴛᴍ.</b>
-<b>ᴛʜᴀɴᴋ ʏᴏᴜ ғᴏʀ ʏᴏᴜʀ ʟᴏᴠᴇ! ✨</b></blockquote>
-"""
-    await CallbackQuery.edit_message_media(
-        media=InputMediaPhoto(
-            media="https://files.catbox.moe/c0akch.jpg",
-            caption=donate_text
-        ),
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton(text="⌯ ʙᴀᴄᴋ ⌯", callback_data="clone_page")]]
         )
     )
 
@@ -281,7 +256,7 @@ async def del_back_playlist(client, CallbackQuery, _):
         img = await get_thumb(videoid)
         run = await CallbackQuery.message.reply_photo(
             photo=img if img else STREAM_IMG_URL,
-            caption=_["stream_1"].format(f"https://t.me/{app.username}?start=info_{videoid}", title[:23], duration, user),
+            caption=_["stream_1"].format(f"https://t.me/{app.username}?start=info_{videoid}", title[:23], duration, user) + "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️",
             reply_markup=InlineKeyboardMarkup(button),
         )
         db[chat_id][0]["mystic"] = run
