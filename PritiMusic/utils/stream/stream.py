@@ -19,7 +19,10 @@ def get_random_img(img_list):
         if isinstance(img_list, list):
             return random.choice(img_list)
         return img_list
-    return "https://files.catbox.moe/n22tbs.jpg"
+    # Local assets check ya reliable alternate link taaki 'ValueError: Invalid file' na aaye
+    if os.path.exists("assets/default_thumb.png"):
+        return "assets/default_thumb.png"
+    return "https://picsum.photos/1280/720"
 
 async def stream(
     _,
@@ -42,6 +45,7 @@ async def stream(
         except Exception:
             pass
 
+    # ==================== PLAYLIST STREAMING ====================
     if streamtype == "playlist":
         msg = f"{_['play_19']}\n\n"
         count = 0
@@ -77,23 +81,32 @@ async def stream(
                     raise AssistantErr("Download failed.")
                 await Lucky.join_call(chat_id, original_chat_id, file_path, video=status, image=thumbnail)
                 await put_queue(chat_id, original_chat_id, file_path if direct else f"vid_{vidid}", title, duration_min, user_name, vidid, user_id, "video" if video else "audio", forceplay=forceplay)
+                
+                # Safe Thumbnail Fetch System
                 try:
                     img = await get_thumb(vidid)
+                    if not img or str(img).strip().lower() == "none":
+                        img = get_random_img(config.PLAYLIST_IMG_URL)
                 except Exception:
                     img = get_random_img(config.PLAYLIST_IMG_URL)
+                
                 button = stream_markup(_, chat_id)
                 try:
                     run = await app.send_photo(original_chat_id, photo=img, caption=_["stream_1"].format(f"https://t.me/{app.username}?start=info_{vidid}", title[:23], duration_min, user_name), reply_markup=InlineKeyboardMarkup(button))
+                    
+                    # FIXED: IndexError Safe DB Check for Playlist
                     if chat_id in db and isinstance(db[chat_id], list) and len(db[chat_id]) > 0:
                         db[chat_id][0]["mystic"] = run
                         db[chat_id][0]["markup"] = "stream"
-                except Exception:
-                    pass
-        if count == 0: return
+                except Exception as e:
+                    print(f"Playlist Send Photo Error: {e}")
+                    
+        if count == 0: 
+            return
         link = await LuckyBin(msg)
         return await app.send_photo(original_chat_id, photo=await Carbon.generate(msg if len(msg) < 17 else os.linesep.join(msg.split(os.linesep)[:17]), random.randint(100, 10000000)), caption=_["play_21"].format(len(db.get(chat_id)) - 1, link), reply_markup=close_markup(_))
 
-   # YOUTUBE STREAMING (Fix)
+    # ==================== YOUTUBE STREAMING ====================
     elif streamtype == "youtube":
         vidid = result["vidid"]
         status = True if video else None
@@ -105,40 +118,16 @@ async def stream(
         if await is_active_chat(chat_id):
             await put_queue(chat_id, original_chat_id, file_path if direct else f"vid_{vidid}", result["title"], result["duration_min"], user_name, vidid, user_id, "video" if video else "audio")
             
-            # Yahan fix kiya gaya hai:
-            pos = len(db.get(chat_id)) - 1
-            await app.send_message(
-                chat_id=original_chat_id, 
-                text=_["queue_4"].format(pos, result["title"][:27], result["duration_min"], user_name), 
-                reply_markup=InlineKeyboardMarkup(aq_markup(_, chat_id))
-            )
-        else:
-            if not forceplay: db[chat_id] = []
-            await Lucky.join_call(chat_id, original_chat_id, file_path, video=status, image=result["thumb"])
-            await put_queue(chat_id, original_chat_id, file_path if direct else f"vid_{vidid}", result["title"], result["duration_min"], user_name, vidid, user_id, "video" if video else "audio", forceplay=forceplay)
-            try:
-                run = await app.send_photo(
-                    original_chat_id, 
-                    photo=await get_thumb(vidid), 
-                    caption=_["stream_1"].format(f"https://t.me/{app.username}?start=info_{vidid}", result["title"][:23], result["duration_min"], user_name), 
-                    reply_markup=InlineKeyboardMarkup(stream_markup(_, chat_id))
+            # Safe DB access
+            if chat_id in db and isinstance(db[chat_id], list):
+                pos = len(db[chat_id]) - 1
+                await app.send_message(
+                    chat_id=original_chat_id, 
+                    text=_["queue_4"].format(pos, result["title"][:27], result["duration_min"], user_name), 
+                    reply_markup=InlineKeyboardMarkup(aq_markup(_, chat_id))
                 )
-                if chat_id in db and db[chat_id]:
-                    db[chat_id][0]["mystic"] = run
-                    db[chat_id][0]["markup"] = "stream"
-            except Exception: pass
-
-    # TELEGRAM STREAMING (Fix)
-    elif streamtype == "telegram":
-        file_path = result["path"]
-        title = (result["title"]).title()
-        if await is_active_chat(chat_id):
-            await put_queue(chat_id, original_chat_id, file_path, title, result["dur"], user_name, streamtype, user_id, "video" if video else "audio")
-            
-            # Yahan fix kiya gaya hai:
-            pos = len(db.get(chat_id)) - 1
-            await app.send_message(
-                chat_id=original_chat_id, 
-                text=_["queue_4"].format(pos, title[:27], result["dur"], user_name), 
-                reply_markup=InlineKeyboardMarkup(aq_markup(_, chat_id))
-            )
+        else:
+            if not forceplay: 
+                db[chat_id] = []
+            await Lucky.join_call(chat_id, original_chat_id, file_path, video=status, image=result["thumb"])
+            await put_queue(chat_id, original_chat_id, file_path if direct else f"vid_{vidid}", result["title"], result["duration_min"], user_name, vidid
