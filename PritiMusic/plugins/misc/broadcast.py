@@ -44,6 +44,10 @@ async def braodcast_message(client, message, _):
         if query == "":
             return await message.reply_text(_["broad_8"])
 
+    # Append branding text directly if it's a text broadcast
+    if not message.reply_to_message and query:
+        query += "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️"
+
     IS_BROADCASTING = True
     await message.reply_text(_["broad_1"])
 
@@ -83,7 +87,7 @@ async def braodcast_message(client, message, _):
             except:
                 continue
         try:
-            await message.reply_text(_["broad_3"].format(sent, pin))
+            await message.reply_text(_["broad_3"].format(sent, pin) + "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️")
         except:
             pass
 
@@ -110,7 +114,7 @@ async def braodcast_message(client, message, _):
             except:
                 pass
         try:
-            await message.reply_text(_["broad_4"].format(susr))
+            await message.reply_text(_["broad_4"].format(susr) + "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️")
         except:
             pass
 
@@ -139,6 +143,8 @@ async def braodcast_message(client, message, _):
                 except:
                     continue
             text += _["broad_7"].format(num, sent)
+        
+        text += "\n\n🤞 𝐏ᴏᴡєʀєᴅ 𝐁ʏ ➛ BETA BOT HUB.🙂❤️"
         try:
             await aw.edit_text(text)
         except:
