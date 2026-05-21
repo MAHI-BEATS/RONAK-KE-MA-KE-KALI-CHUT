@@ -2,9 +2,9 @@ import time
 import random
 import asyncio
 from pyrogram import filters
-from pyrogram.enums import ChatType
+from pyrogram.enums import ChatType, ChatAction  # Added ChatAction to fix NameError
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
-from py_yt import VideosSearch
+from youtubesearchpython.__future__ import VideosSearch  # Corrected YouTube Async search import
 
 import config
 from PritiMusic import app
@@ -24,6 +24,12 @@ from PritiMusic.utils.inline import help_pannel, private_panel, start_panel
 from config import BANNED_USERS, START_IMG_URL, CMBOT
 from strings import get_string
 
+# Fallback function added in case get_safe_photo is not defined elsewhere
+def get_safe_photo(url):
+    if isinstance(url, list):
+        return random.choice(url)
+    return url
+
 # Telegram Message Effect IDs
 EFFECT_ID = [
     5046509860389126442,
@@ -39,7 +45,8 @@ async def start_pm(client, message: Message, _):
     loading_1 = await message.reply_text(random.choice(CMBOT))
     await add_served_user(message.from_user.id)
     
-    wait loading_1.edit_text("<b>ᴌᴏᴀᴅɪɴɢ....</b>")
+    # FIX: Changed 'wait' to 'await'
+    await loading_1.edit_text("<b>ᴌᴏᴀᴅɪɴɢ....</b>")
     await asyncio.sleep(0.3)
 
     await loading_1.edit_text("<b>ꜱᴛᴀʀᴛɪɴɢ..ʙᴀʙʏ.❤️❤️</b>")
@@ -64,7 +71,7 @@ async def start_pm(client, message: Message, _):
                 get_safe_photo(START_IMG_URL),
                 caption=_["help_1"].format(config.SUPPORT_CHAT),
                 reply_markup=keyboard,
-            )
+                )
         if name[0:3] == "sud":
             await sudoers_list(client=client, message=message, _=_)
             if await is_on_off(2):
@@ -108,16 +115,16 @@ async def start_pm(client, message: Message, _):
             if await is_on_off(2):
                 return await app.send_message(
                     chat_id=config.LOGGER_ID,
-                    text=f"✦ {message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>ᴛʀᴀᴄᴋ ɪɴғᴏʀᴍᴀᴛɪᴏɴ</b>.\n\n✦ <b>ᴜsᴇʀ ɪᴅ ➠</b> <code>{message.from_user.id}</code>\n✦ <b>ᴜsᴇʀɴᴀᴍᴇ ➠</b> @{message.from_user.username}",
+                    text=f"✦ {message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b><b>ᴛʀᴀᴄᴋ ɪɴғᴏʀᴍᴀᴛɪᴏɴ</b></b>.\n\n✦ <b>ᴜsᴇʀ ɪᴅ ➠</b> <code>{message.from_user.id}</code>\n✦ <b>ᴜsᴇʀɴᴀᴍᴇ ➠</b> @{message.from_user.username}",
                 )
-     else:
+    else:
         out = private_panel(_)
         await app.send_chat_action(message.chat.id, ChatAction.TYPING)
         
-        # 👉 Yahan Sticker Send Hoga (Start Image se pehle)
+        # Yahan Sticker Send Hoga (Start Image se pehle)
         await message.reply_sticker("CAACAgUAAxkBAAFJgZ1qBGwx9Z9vW5BhG3dw0l1A5j4CyQACXRYAAuc-wVWs4--9DGlDKzsE")
         
-        # 👉 Uske baad Start Image Send Hogi
+        # Uske baad Start Image Send Hogi
         await message.reply_photo(
             get_safe_photo(START_IMG_URL),
             message_effect_id=random.choice(EFFECT_ID),
@@ -137,7 +144,7 @@ async def start_gp(client, message: Message, _):
     out = start_panel(_)
     uptime = int(time.time() - _boot_)
     await message.reply_photo(
-        random.choice(START_IMG_URL),
+        get_safe_photo(START_IMG_URL),
         caption=_["start_1"].format(app.mention, get_readable_time(uptime)),
         reply_markup=InlineKeyboardMarkup(out),
     )
