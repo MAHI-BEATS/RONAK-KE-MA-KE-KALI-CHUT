@@ -93,7 +93,7 @@ async def stream(
         link = await LuckyBin(msg)
         return await app.send_photo(original_chat_id, photo=await Carbon.generate(msg if len(msg) < 17 else os.linesep.join(msg.split(os.linesep)[:17]), random.randint(100, 10000000)), caption=_["play_21"].format(len(db.get(chat_id)) - 1, link), reply_markup=close_markup(_))
 
-    # YOUTUBE STREAMING
+   # YOUTUBE STREAMING (Fix)
     elif streamtype == "youtube":
         vidid = result["vidid"]
         status = True if video else None
@@ -104,4 +104,41 @@ async def stream(
         
         if await is_active_chat(chat_id):
             await put_queue(chat_id, original_chat_id, file_path if direct else f"vid_{vidid}", result["title"], result["duration_min"], user_name, vidid, user_id, "video" if video else "audio")
-            pos = len(db.get
+            
+            # Yahan fix kiya gaya hai:
+            pos = len(db.get(chat_id)) - 1
+            await app.send_message(
+                chat_id=original_chat_id, 
+                text=_["queue_4"].format(pos, result["title"][:27], result["duration_min"], user_name), 
+                reply_markup=InlineKeyboardMarkup(aq_markup(_, chat_id))
+            )
+        else:
+            if not forceplay: db[chat_id] = []
+            await Lucky.join_call(chat_id, original_chat_id, file_path, video=status, image=result["thumb"])
+            await put_queue(chat_id, original_chat_id, file_path if direct else f"vid_{vidid}", result["title"], result["duration_min"], user_name, vidid, user_id, "video" if video else "audio", forceplay=forceplay)
+            try:
+                run = await app.send_photo(
+                    original_chat_id, 
+                    photo=await get_thumb(vidid), 
+                    caption=_["stream_1"].format(f"https://t.me/{app.username}?start=info_{vidid}", result["title"][:23], result["duration_min"], user_name), 
+                    reply_markup=InlineKeyboardMarkup(stream_markup(_, chat_id))
+                )
+                if chat_id in db and db[chat_id]:
+                    db[chat_id][0]["mystic"] = run
+                    db[chat_id][0]["markup"] = "stream"
+            except Exception: pass
+
+    # TELEGRAM STREAMING (Fix)
+    elif streamtype == "telegram":
+        file_path = result["path"]
+        title = (result["title"]).title()
+        if await is_active_chat(chat_id):
+            await put_queue(chat_id, original_chat_id, file_path, title, result["dur"], user_name, streamtype, user_id, "video" if video else "audio")
+            
+            # Yahan fix kiya gaya hai:
+            pos = len(db.get(chat_id)) - 1
+            await app.send_message(
+                chat_id=original_chat_id, 
+                text=_["queue_4"].format(pos, title[:27], result["dur"], user_name), 
+                reply_markup=InlineKeyboardMarkup(aq_markup(_, chat_id))
+            )
